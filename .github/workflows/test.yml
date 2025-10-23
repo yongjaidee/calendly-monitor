@@ -1,0 +1,23 @@
+name: Test GitHub to ntfy
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  test-notification:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Send test notification
+        run: |
+          python test_github_to_ntfy.py
