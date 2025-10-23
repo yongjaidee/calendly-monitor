@@ -73,25 +73,30 @@ def check_calendly_availability(url):
             lookup_response.raise_for_status()
             lookup_data = lookup_response.json()
 
-            print(f"  → Lookup response keys: {list(lookup_data.keys())}")
+            # The response structure varies - try different paths
+            event_uuid = None
+            scheduling_link_uuid = None
 
-            if 'resource' not in lookup_data:
-                print(f"  ❌ No 'resource' in response. Full response: {lookup_data}")
-                return []
-
-            if 'uuid' not in lookup_data['resource']:
-                print(f"  ❌ No 'uuid' in resource. Resource keys: {list(lookup_data['resource'].keys())}")
-                return []
-
-            event_uuid = lookup_data['resource']['uuid']
-            scheduling_link_uuid = lookup_data['resource'].get('scheduling_link_uuid', '')
-            print(f"  ✓ Found event UUID: {event_uuid}")
+            # Try path 1: resource.uuid
+            if 'resource' in lookup_data and 'uuid' in lookup_data['resource']:
+                event_uuid = lookup_data['resource']['uuid']
+                scheduling_link_uuid = lookup_data['resource'].get('scheduling_link_uuid', '')
+                print(f"  ✓ Found event UUID: {event_uuid}")
+            # Try path 2: direct uuid
+            elif 'uuid' in lookup_data:
+                event_uuid = lookup_data['uuid']
+                scheduling_link_uuid = lookup_data.get('scheduling_link_uuid', '')
+                print(f"  ✓ Found event UUID: {event_uuid}")
+            # Try path 3: Just use the slug as UUID (fallback)
+            else:
+                # Some Calendly URLs work directly without lookup
+                print(f"  → No UUID in lookup, trying direct API call")
+                event_uuid = event_type_slug
 
         except Exception as e:
-            print(f"  ❌ Lookup failed: {e}")
-            import traceback
-            print(f"  Traceback: {traceback.format_exc()}")
-            return []
+            print(f"  ⚠️  Lookup failed, trying direct approach: {e}")
+            event_uuid = event_type_slug
+            scheduling_link_uuid = None
 
         # Step 2: Get availability for the month
         month_match = re.search(r'month=(\d{4}-\d{2})', url)
@@ -103,7 +108,6 @@ def check_calendly_availability(url):
         year, month_num = month.split('-')
 
         # Calculate last day of month
-        import calendar
         last_day = calendar.monthrange(int(year), int(month_num))[1]
 
         availability_url = f"https://calendly.com/api/booking/event_types/{event_uuid}/calendar/range"
@@ -132,7 +136,8 @@ def check_calendly_availability(url):
                         date_obj = datetime.strptime(date_str, '%Y-%m-%d')
                         if date_obj < CUTOFF_DATE and date_obj.date() >= datetime.now().date():
                             available_slots.append(date_str)
-                            print(f"  ✓ Found available slot: {date_str} ({len(day['spots'])} spots)")
+                            num_spots = len(day['spots'])
+                            print(f"  ✓ Found available slot: {date_str} ({num_spots} time slots)")
             else:
                 print(f"  ⚠️  Unexpected response structure: {list(avail_data.keys())}")
 
