@@ -78,6 +78,7 @@ def check_calendly_availability(url):
                 return []
 
             event_uuid = lookup_data['resource']['uuid']
+            scheduling_link_uuid = lookup_data['resource'].get('scheduling_link_uuid', '')
             print(f"  ✓ Found event UUID: {event_uuid}")
 
         except Exception as e:
@@ -104,6 +105,10 @@ def check_calendly_availability(url):
             'range_start': f'{month}-01',
             'range_end': f'{month}-{last_day:02d}'
         }
+
+        # Add scheduling_link_uuid if available
+        if scheduling_link_uuid:
+            params['scheduling_link_uuid'] = scheduling_link_uuid
 
         print(f"  → Checking availability for {month}...")
 
