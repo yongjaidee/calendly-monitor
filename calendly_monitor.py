@@ -54,51 +54,57 @@ def check_calendly_availability(url):
         response = requests.get(url, headers=headers, timeout=30)
         response.raise_for_status()
 
-        soup = BeautifulSoup(response.text, 'html.parser')
-        scripts = soup.find_all('script')
         available_slots = []
 
-        for script in scripts:
-            if script.string and 'available' in script.string.lower():
-                try:
-                    date_pattern = r'(\d{4}-\d{2}-\d{2})'
-                    dates = re.findall(date_pattern, script.string)
-
-                    for date_str in dates:
-                        try:
-                            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-                            if date_obj < CUTOFF_DATE and date_obj > datetime.now():
-                                if date_str not in available_slots:
-                                    available_slots.append(date_str)
-                        except ValueError:
-                            continue
-                except Exception:
-                    continue
-
-        # Try API method
-        calendly_api_pattern = r'https://calendly\.com/api/booking/event_types/([^/]+)/calendar/range'
+        # Method 1: Try to find Calendly's API endpoint in the page
+        calendly_api_pattern = r'https://calendly\.com/api/booking/event_types/([^/"\s]+)'
         api_matches = re.findall(calendly_api_pattern, response.text)
 
-        if api_matches and not available_slots:
+        if api_matches:
             event_uuid = api_matches[0]
             month_match = re.search(r'month=(\d{4}-\d{2})', url)
             if month_match:
                 month = month_match.group(1)
-                api_url = f"https://calendly.com/api/booking/event_types/{event_uuid}/calendar/range?timezone=America/New_York&diagnostics=false&range_start={month}-01&range_end={month}-31"
+                api_url = f"https://calendly.com/api/booking/event_types/{event_uuid}/calendar/range?timezone=America/Los_Angeles&diagnostics=false&range_start={month}-01&range_end={month}-31"
 
+                print(f"  → Trying API: {api_url[:80]}...")
                 try:
                     api_response = requests.get(api_url, headers=headers, timeout=30)
                     api_data = api_response.json()
 
                     if 'days' in api_data:
                         for day in api_data['days']:
-                            if day.get('status') == 'available' and day.get('spots'):
+                            if day.get('status') == 'available' and day.get('spots', []):
                                 date_str = day['date']
                                 date_obj = datetime.strptime(date_str, '%Y-%m-%d')
-                                if date_obj < CUTOFF_DATE and date_obj > datetime.now():
+                                if date_obj < CUTOFF_DATE and date_obj.date() >= datetime.now().date():
                                     available_slots.append(date_str)
+                                    print(f"  ✓ Found available slot: {date_str}")
+                    else:
+                        print(f"  → API response structure: {list(api_data.keys())}")
                 except Exception as e:
-                    print(f"API call failed: {e}")
+                    print(f"  ⚠️  API call failed: {e}")
+
+        # Method 2: Look for dates in script tags
+        if not available_slots:
+            print(f"  → Scanning HTML for date patterns...")
+            soup = BeautifulSoup(response.text, 'html.parser')
+            scripts = soup.find_all('script')
+
+            for script in scripts:
+                if script.string and 'available' in script.string.lower():
+                    date_pattern = r'"(\d{4}-\d{2}-\d{2})"[^}]*"status"\s*:\s*"available"'
+                    matches = re.findall(date_pattern, script.string)
+
+                    for date_str in matches:
+                        try:
+                            date_obj = datetime.strptime(date_str, '%Y-%m-%d')
+                            if date_obj < CUTOFF_DATE and date_obj.date() >= datetime.now().date():
+                                if date_str not in available_slots:
+                                    available_slots.append(date_str)
+                                    print(f"  ✓ Found available slot: {date_str}")
+                        except ValueError:
+                            continue
 
         return sorted(list(set(available_slots)))
 
@@ -143,7 +149,7 @@ def main():
             message=message
         )
     else:
-        print("\n😔 No available slots found before Nov 19, 2025")
+        print(f"\n😔 No available slots found before {CUTOFF_DATE.strftime('%b %d, %Y')}")
 
     print(f"\n{'='*60}")
     print(f"Next check in 30 minutes...")
