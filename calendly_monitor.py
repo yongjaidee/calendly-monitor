@@ -139,7 +139,7 @@ def main():
 
         print(f"\n🔔 SLOTS AVAILABLE! Sending notification...")
         send_ntfy_notification(
-            title="📅 Calendly Slot Available!",
+            title="Calendly Slot Available!",
             message=message
         )
     else:

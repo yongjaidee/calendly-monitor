@@ -19,7 +19,7 @@ def send_ntfy_notification(title, message):
             headers={
                 "Title": title,
                 "Priority": "high",
-                "Tags": "calendar,alarm_clock,white_check_mark"
+                "Tags": "test_tube,bell,white_check_mark"
             }
         )
         response.raise_for_status()
@@ -54,7 +54,7 @@ This test will be removed after successful verification."""
 
     print("🔔 Sending test notification...")
     send_ntfy_notification(
-        title="🧪 GitHub Actions → ntfy Test",
+        title="GitHub Actions to ntfy Test",
         message=message
     )
 
