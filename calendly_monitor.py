@@ -14,7 +14,7 @@ CALENDLY_URLS = [
     "https://calendly.com/markzoril/50-minute-emoney-planning-session?back=1&month=2025-11"
 ]
 
-CUTOFF_DATE = datetime(2025, 11, 29)
+CUTOFF_DATE = datetime(2025, 11, 19)
 
 # Choose a unique topic name (this is your notification channel)
 NTFY_TOPIC = "calendly-monitor-markzoril-2025"  # Change this to something unique!
