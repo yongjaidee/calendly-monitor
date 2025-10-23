@@ -73,8 +73,14 @@ def check_calendly_availability(url):
             lookup_response.raise_for_status()
             lookup_data = lookup_response.json()
 
-            if 'resource' not in lookup_data or 'uuid' not in lookup_data['resource']:
-                print(f"  ❌ No UUID found in lookup response")
+            print(f"  → Lookup response keys: {list(lookup_data.keys())}")
+
+            if 'resource' not in lookup_data:
+                print(f"  ❌ No 'resource' in response. Full response: {lookup_data}")
+                return []
+
+            if 'uuid' not in lookup_data['resource']:
+                print(f"  ❌ No 'uuid' in resource. Resource keys: {list(lookup_data['resource'].keys())}")
                 return []
 
             event_uuid = lookup_data['resource']['uuid']
@@ -83,6 +89,8 @@ def check_calendly_availability(url):
 
         except Exception as e:
             print(f"  ❌ Lookup failed: {e}")
+            import traceback
+            print(f"  Traceback: {traceback.format_exc()}")
             return []
 
         # Step 2: Get availability for the month
